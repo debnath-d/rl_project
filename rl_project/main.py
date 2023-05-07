@@ -1,65 +1,78 @@
-from collections import deque
+import argparse
 
-import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
+from algorithms.a2c import Actor, Critic, train
+from env import OptimalControlEnv
+import torch
+from torch import optim
 
-from rl_project.algorithms.dqn import DQN, select_action, train_dqn
-from rl_project.env import OptimalControlEnv
 
-
-def main():
+def main(args):
     env = OptimalControlEnv()
-    model = DQN(env.observation_space.shape[0], env.action_space.shape[0])
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
-    memory = deque(maxlen=10000)
 
-    num_episodes = 1000
-    max_episode_length = 300
-    batch_size = 64
-    epsilon_start = 1.0
-    epsilon_end = 0.01
-    epsilon_decay = 0.995
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
 
-    epsilon = epsilon_start
+    # Check if CUDA is available and set the device accordingly
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Create TensorBoard SummaryWriter
-    writer = SummaryWriter()
+    # Create the models and move them to the device
+    actor = Actor(state_dim, action_dim).to(device)
+    critic = Critic(state_dim).to(device)
 
-    total_steps = 0
-    for episode in range(num_episodes):
-        state = env.reset()
-        done = False
-        episode_reward = 0
+    actor_optimizer = optim.Adam(actor.parameters(), lr=args.actor_lr)
+    critic_optimizer = optim.Adam(critic.parameters(), lr=args.critic_lr)
 
-        for step in range(max_episode_length):
-            if not episode % 10:
-                print(f"{episode=}")
-            action = select_action(env, model, state, epsilon)
-            next_state, reward, done, _ = env.step(action)
-
-            memory.append((state, action, reward, next_state, done))
-            loss = train_dqn(model, memory, optimizer, batch_size)
-
-            state = next_state
-            episode_reward += reward
-            total_steps += 1
-
-            # Log metrics
-            if loss is not None:
-                writer.add_scalar("loss", loss, total_steps)
-            writer.add_scalar("reward", reward, total_steps)
-
-            if done:
-                break
-
-        # Log episode-level metrics
-        writer.add_scalar("episode_reward", episode_reward, episode)
-
-        epsilon = max(epsilon_end, epsilon * epsilon_decay)
-
-    # Close the SummaryWriter
-    writer.close()
+    # Pass the device to the train function
+    train(
+        env,
+        actor,
+        critic,
+        actor_optimizer,
+        critic_optimizer,
+        args.gamma,
+        args.num_episodes,
+        args.max_episode_steps,
+        device=device,
+    )
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--algorithm", default="a2c", help="The algorithm to use (default: a2c)"
+    )
+    parser.add_argument(
+        "--actor_lr",
+        type=float,
+        default=0.0003,
+        help="The learning rate for the actor (default: 0.0003)",
+    )
+    parser.add_argument(
+        "--critic_lr",
+        type=float,
+        default=0.001,
+        help="The learning rate for the critic (default: 0.001)",
+    )
+    parser.add_argument(
+        "--gamma", type=float, default=0.99, help="Discount factor (default: 0.99)"
+    )
+    parser.add_argument(
+        "--num_episodes",
+        type=int,
+        default=500,
+        help="Number of episodes to train (default: 500)",
+    )
+    parser.add_argument(
+        "--max_episode_steps",
+        type=int,
+        default=300,
+        help="Maximum steps per episode (default: 300)",
+    )
+
+    args = parser.parse_args()
+
+    if args.algorithm.lower() == "a2c":
+        main(args)
+    else:
+        print(f"Unsupported algorithm '{args.algorithm}'.")
