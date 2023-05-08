@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions import Normal
 
+from env import OptimalControlEnv
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 from tqdm import tqdm
@@ -12,7 +14,6 @@ import random
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-from env import OptimalControlEnv
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, max_action):
         super(Actor, self).__init__()
@@ -84,6 +85,7 @@ class SAC:
         next_state = torch.FloatTensor(next_state).to(device)
         reward = torch.FloatTensor(reward).to(device)
         done = torch.FloatTensor(1 - done).to(device).unsqueeze(1)
+        
         # Critic training
         next_action = self.actor_target(next_state)
         noise = torch.FloatTensor(action).data.normal_(0, 0.1 * self.max_action).to(device)
@@ -142,7 +144,7 @@ class SAC:
         self.critic_optimizer_2.load_state_dict(torch.load(filename + "_critic_optimizer_2"))
 
 
-def train(env, num_episodes):
+def train(env, num_episodes, max_timesteps, batch_size):
 
     reward_history = []
     state_trajectory = []
@@ -190,7 +192,6 @@ def plot_state_trajectory(state_trajectory):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    # Set aesthetics
     ax.set_title('State Trajectory')
     ax.set_xlabel('Timestep')
     ax.set_ylabel('$x_1(t)$')
@@ -206,7 +207,6 @@ env = OptimalControlEnv()
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 max_action = float(env.action_space.high[0])
-
 agent = SAC(state_dim, action_dim, max_action)
 replay_buffer = ReplayBuffer()
 
@@ -217,10 +217,9 @@ batch_size = 64
 
 
 
-final_rewards, state_trajectory, control_input_history = train(env, num_episodes)
+final_rewards, state_trajectory, control_input_history = train(env, num_episodes, max_timesteps, batch_size)
 
 plot_rewards(final_rewards)
-
 plot_state_trajectory(state_trajectory) 
 
 
