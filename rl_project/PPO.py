@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import numpy as np
+
+# import numpy as np
 from torch.distributions import Normal
 from env import OptimalControlEnv
 import matplotlib.pyplot as plt
@@ -18,19 +19,20 @@ import matplotlib.pyplot as plt
 
     The clear method simply resets all memory buffers to empty lists."""
 
+
 class Memory:
     def __init__(self):
         # Initialize the memory buffers for states, actions, log-probabilities, rewards, and done flags
         self.states = []  # list to store the states
-        self.actions = [] # list to store the actions
-        self.logprobs = [] # list to store the log probabilities
+        self.actions = []  # list to store the actions
+        self.logprobs = []  # list to store the log probabilities
         self.rewards = []  # list to store the rewards
-        self.dones = []   # list to store the done flags
+        self.dones = []  # list to store the done flags
 
     def store(self, state, action, logprob, reward, done):
         """
         Store a single experience tuple in the memory buffer.
-        
+
         :param state: the current state of the environment
         :param action: the action taken by the agent
         :param logprob: the log-probability of the action given the state
@@ -52,7 +54,8 @@ class Memory:
         self.logprobs = []
         self.rewards = []
         self.dones = []
-    
+
+
 """The Actor and Critic classes are neural network models used to approximate the actor and critic functions, respectively. 
 Both classes inherit from PyTorch's nn.Module class, and define the following methods:
 
@@ -66,7 +69,8 @@ in the current state and returns the action to take based on the current state.
 The Critic class takes in one argument: the dimensionality of the state space. The neural network architecture consists of 
 three fully connected layers: an input layer, a hidden layer with 64 units and a ReLU activation function, and an output 
 layer with a single scalar value. The forward method takes in the current state and returns the estimated value of the state."""
-    
+
+
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim):
         # Initialize the actor network
@@ -74,9 +78,9 @@ class Actor(nn.Module):
         # Define the neural network architecture for the actor
         self.model = nn.Sequential(
             nn.Linear(state_dim, 64),  # input layer
-            nn.ReLU(),                  # activation function
-            nn.Linear(64, 32),          # hidden layer
-            nn.ReLU(),                  # activation function
+            nn.ReLU(),  # activation function
+            nn.Linear(64, 32),  # hidden layer
+            nn.ReLU(),  # activation function
             nn.Linear(32, action_dim),  # output layer
         )
 
@@ -86,6 +90,7 @@ class Actor(nn.Module):
         :param state: the current state of the environment
         :return: the action to take based on the current state
         """
+
     def forward(self, state):
         return self.model(state)
 
@@ -96,11 +101,11 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         # Define the neural network architecture for the critic
         self.model = nn.Sequential(
-            nn.Linear(state_dim, 64), # input layer
-            nn.ReLU(),               # activation function
-            nn.Linear(64, 32),       # hidden layer
-            nn.ReLU(),               # activation function
-            nn.Linear(32, 1),       # output layer (scalar value)
+            nn.Linear(state_dim, 64),  # input layer
+            nn.ReLU(),  # activation function
+            nn.Linear(64, 32),  # hidden layer
+            nn.ReLU(),  # activation function
+            nn.Linear(32, 1),  # output layer (scalar value)
         )
 
     """
@@ -115,10 +120,20 @@ class Critic(nn.Module):
 
 
 class PPO:
-    def __init__(self, state_dim, action_dim, lr_actor, lr_critic, gamma, K_epochs, eps_clip, action_std):
+    def __init__(
+        self,
+        state_dim,
+        action_dim,
+        lr_actor,
+        lr_critic,
+        gamma,
+        K_epochs,
+        eps_clip,
+        action_std,
+    ):
         """
         Initialize the PPO algorithm with the necessary hyperparameters
-        
+
         :param state_dim: the dimensionality of the state space
         :param action_dim: the dimensionality of the action space
         :param lr_actor: the learning rate for the actor optimizer
@@ -139,13 +154,17 @@ class PPO:
         self.eps_clip = eps_clip
         self.action_std = action_std
         # Learning rate schedulers for the actor and critic optimizers
-        self.actor_scheduler = optim.lr_scheduler.StepLR(self.actor_optimizer, step_size=100, gamma=0.95)
-        self.critic_scheduler = optim.lr_scheduler.StepLR(self.critic_optimizer, step_size=100, gamma=0.95)
+        self.actor_scheduler = optim.lr_scheduler.StepLR(
+            self.actor_optimizer, step_size=100, gamma=0.95
+        )
+        self.critic_scheduler = optim.lr_scheduler.StepLR(
+            self.critic_optimizer, step_size=100, gamma=0.95
+        )
 
     def select_action(self, state):
         """
         Select an action based on the current state, using the actor network and action distribution.
-        
+
         :param state: the current state of the environment
         :return: the action to take and the log probability of the action
         """
@@ -162,7 +181,7 @@ class PPO:
     def normalize(self, x):
         """
         Normalize a tensor by subtracting its mean and dividing by its standard deviation.
-        
+
         :param x: the tensor to normalize
         :return: the normalized tensor
         """
@@ -197,7 +216,9 @@ class PPO:
         # Loop for K_epochs to update the actor and critic networks
         for _ in range(self.K_epochs):
             # Compute the new policy probabilities and log probabilities
-            logprobs = Normal(self.actor(old_states), torch.tensor(1.0)).log_prob(old_actions)
+            logprobs = Normal(self.actor(old_states), torch.tensor(1.0)).log_prob(
+                old_actions
+            )
             ratios = torch.exp(logprobs - old_logprobs.detach())
 
             advantages = rewards - self.critic(old_states).squeeze()
@@ -205,9 +226,11 @@ class PPO:
             # Normalize the advantages
             advantages = self.normalize(advantages)
             # Calculate the advantages by subtracting the estimated state values from the normalized rewards
-             # Calculate the two surrogate losses
+            # Calculate the two surrogate losses
             surr1 = ratios * advantages
-            surr2 = torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
+            surr2 = (
+                torch.clamp(ratios, 1 - self.eps_clip, 1 + self.eps_clip) * advantages
+            )
             # Calculate the actor and critic losses
             actor_loss = -torch.min(surr1, surr2).mean()
             critic_loss = nn.MSELoss()(self.critic(old_states).squeeze(), rewards)
@@ -221,8 +244,11 @@ class PPO:
             self.critic_optimizer.step()
         # Clear the memory buffer after updating the networks
         memory.clear()
+
+
 # Create an empty list to store the total rewards for each episode
 episode_rewards = []
+
 
 def main():
     # create the environment and extract state and action dimensions
@@ -230,7 +256,16 @@ def main():
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     # initialize the PPO agent with the state and action dimensions, learning rates, and other hyperparameters
-    ppo = PPO(state_dim, action_dim, lr_actor=0.005, lr_critic=0.005, gamma=0.95, K_epochs=40, eps_clip=0.1, action_std=1.0)
+    ppo = PPO(
+        state_dim,
+        action_dim,
+        lr_actor=0.005,
+        lr_critic=0.005,
+        gamma=0.95,
+        K_epochs=40,
+        eps_clip=0.1,
+        action_std=1.0,
+    )
     # set the number of episodes to run and the maximum episode length
     num_episodes = 1000
     max_episode_length = 300
@@ -268,14 +303,15 @@ def main():
     # plot the episode rewards
     plt.plot(episode_rewards)
 
-    plt.xlabel('Episode')
+    plt.xlabel("Episode")
 
-    plt.ylabel('Reward')
+    plt.ylabel("Reward")
 
-    plt.title('Rewards vs Episodes')
+    plt.title("Rewards vs Episodes")
 
-    plt.savefig('rewards.png')
+    plt.savefig("rewards.png")
     plt.figure()
+
 
 if __name__ == "__main__":
     main()
@@ -283,14 +319,10 @@ if __name__ == "__main__":
 
     plt.plot(episode_rewards)
 
-    plt.xlabel('Episode')
+    plt.xlabel("Episode")
 
-    plt.ylabel('Reward')
+    plt.ylabel("Reward")
 
-    plt.title('Rewards vs Episodes')
+    plt.title("Rewards vs Episodes")
 
-    plt.savefig('rewards.png')
-
-
-
-
+    plt.savefig("rewards.png")

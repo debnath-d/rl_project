@@ -3,7 +3,7 @@ from gym import spaces
 import numpy as np
 from scipy.linalg import solve_continuous_are
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+
 
 class OptimalControlEnv(gym.Env):
     def __init__(self, dt=1):
@@ -20,22 +20,24 @@ class OptimalControlEnv(gym.Env):
 
         # Set the time step
         self.dt = dt
-        
+
         # Define the desired state for LQR
         self.desired_state = np.array([0, 0])
 
         # Calculate the LQR gain matrix
         A, B = self._get_linearized_system()
-        Q = np.diag([1, 1]) # State cost matrix
-        R = 0.1 # Control cost
+        Q = np.diag([1, 1])  # State cost matrix
+        R = 0.1  # Control cost
         P = solve_continuous_are(A, B, Q, R)
         self.K = np.linalg.inv(R + B.T.dot(P).dot(B)).dot(B.T).dot(P).dot(A)
 
     def _get_linearized_system(self):
         # Get the linearized system dynamics around the current state
         x1, x2 = self.state
-        u = 0 # Zero input
-        A = np.array([[-1, 1], [-0.5 - np.sin(x1)**2 * x2 / 2, -0.5 * np.sin(x1)**2]])
+        u = 0  # Zero input
+        A = np.array(
+            [[-1, 1], [-0.5 - np.sin(x1) ** 2 * x2 / 2, -0.5 * np.sin(x1) ** 2]]
+        )
         B = np.array([[0], [np.sin(x1)]])
         return A, B
 
@@ -68,8 +70,8 @@ class OptimalControlEnv(gym.Env):
         # Rendering function (optional)
         pass
 
-def LQR():
 
+def LQR():
     # Create the environment
     env = OptimalControlEnv(dt=0.01)
 
@@ -103,12 +105,12 @@ def LQR():
 
 def plot_state_trajectory(x1_list, x2_list, time_steps):
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    ax = fig.add_subplot(111, projection="3d")
 
     # Set up the axes labels
-    ax.set_zlabel('Time (s)')
-    ax.set_ylabel('x1')
-    ax.set_xlabel('x2')
+    ax.set_zlabel("Time (s)")
+    ax.set_ylabel("x1")
+    ax.set_xlabel("x2")
 
     # Plot the state trajectory
     ax.plot(x1_list, x2_list, time_steps)
@@ -116,20 +118,22 @@ def plot_state_trajectory(x1_list, x2_list, time_steps):
     # Show the plot
     plt.show()
 
+
 def plot_rewards_vs_time(rewards):
     # Plot the rewards over time
     plt.plot(rewards)
-    plt.xlabel('Episodes')
-    plt.ylabel('Reward')
+    plt.xlabel("Episodes")
+    plt.ylabel("Reward")
     plt.show()
+
 
 def plot_u_vs_time(time_steps, u_list):
     plt.figure()
     plt.plot(time_steps, u_list)
-    plt.xlabel('Time (s)')
-    plt.ylabel('Control Input (u)')
-    plt.title('Control Input vs Time')
+    plt.xlabel("Time (s)")
+    plt.ylabel("Control Input (u)")
+    plt.title("Control Input vs Time")
     plt.show()
 
-LQR()
 
+LQR()
