@@ -5,7 +5,7 @@ import torch.nn as nn
 from env import OptimalControlEnv
 from torch import optim
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=64):
@@ -16,7 +16,7 @@ class Actor(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
-            nn.Tanh(),
+            nn.Sigmoid(),
         )
 
     def forward(self, state):
@@ -52,7 +52,8 @@ def train(
     total_rewards = []  # Store total rewards for each episode
     actor_losses = []  # Store actor losses for each episode
     critic_losses = []  # Store critic losses for each episode
-
+    state_trajectory = []
+    control_input_history = []
     for episode in range(num_episodes):
         state = env.reset()
         done = False
@@ -63,6 +64,9 @@ def train(
             action = actor(state_tensor).detach().cpu().numpy()[0]
             next_state, reward, done, _ = env.step(action)
             total_reward += reward
+
+            state_trajectory.append(state)
+            control_input_history.append(action)
 
             next_state_tensor = torch.FloatTensor(next_state).unsqueeze(0).to(device)
 
@@ -112,6 +116,30 @@ def train(
     plt.legend()
     plt.savefig("results/a2c_losses.png")
 
+    plt.figure()
+    plt.plot(control_input_history[-300:])
+    plt.xlabel('Timestep')
+    plt.ylabel('Control Input')
+    plt.title('Control Input vs Timestep')
+    plt.savefig('results/a2c_control_input.png')
+
+    state_trajectory = np.array(state_trajectory[-300:])
+    timesteps = np.arange(state_trajectory.shape[0])
+
+    # Create 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Set aesthetics
+    ax.set_title('State Trajectory')
+    ax.set_xlabel('Timestep')
+    ax.set_ylabel('$x_1(t)$')
+    ax.set_zlabel('$x_2(t)$')
+
+    # Plot state trajectory
+    ax.scatter(timesteps, state_trajectory[:, 0], state_trajectory[:, 1], c=state_trajectory[:, 1], cmap='viridis')
+
+    plt.savefig('sac_state_trajectory_3d.png')
 
 def main(args):
     env = OptimalControlEnv()
