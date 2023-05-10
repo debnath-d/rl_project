@@ -3,9 +3,10 @@ from gym import spaces
 import numpy as np
 from scipy.linalg import solve_continuous_are
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 class OptimalControlEnv(gym.Env):
-    def __init__(self, dt=0.01):
+    def __init__(self, dt=1):
         super(OptimalControlEnv, self).__init__()
 
         # Define the action and state spaces
@@ -77,12 +78,14 @@ def LQR():
     # Run the simulation with LQR control
     x1_list = []
     x2_list = []
+    u_list = []
     state = env.reset()
     for i in range(num_episodes):
         action = -np.matmul(env.K, (state - env.desired_state))
         state, reward, done, _ = env.step(action)
         x1_list.append(state[0])
         x2_list.append(state[1])
+        u_list.append(action[0])
         rewards.append(reward)
         if done:
             break
@@ -91,20 +94,42 @@ def LQR():
     final_u = action[0]
     print("Final value of u:", final_u)
 
-    # Plot the state variables over time
-    time_steps = np.arange(len(x1_list)) * env.dt
-    plt.plot(time_steps, x1_list, label='x1')
-    plt.plot(time_steps, x2_list, label='x2')
-    plt.xlabel('Time (s)')
-    plt.ylabel('State variable')
-    plt.legend()
+    # Plots
+    # time_steps = np.arange(len(x1_list)) * env.dt
+    # plot_state_trajectory(x1_list, x2_list, time_steps)
+    # plot_u_vs_time(time_steps, u_list)
+    # plot_rewards_vs_time(rewards)
+
+
+def plot_state_trajectory(x1_list, x2_list, time_steps):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Set up the axes labels
+    ax.set_zlabel('Time (s)')
+    ax.set_ylabel('x1')
+    ax.set_xlabel('x2')
+
+    # Plot the state trajectory
+    ax.plot(x1_list, x2_list, time_steps)
+
+    # Show the plot
     plt.show()
 
+def plot_rewards_vs_time(rewards):
     # Plot the rewards over time
     plt.plot(rewards)
     plt.xlabel('Episodes')
     plt.ylabel('Reward')
     plt.show()
 
-# To execute the algorithm
+def plot_u_vs_time(time_steps, u_list):
+    plt.figure()
+    plt.plot(time_steps, u_list)
+    plt.xlabel('Time (s)')
+    plt.ylabel('Control Input (u)')
+    plt.title('Control Input vs Time')
+    plt.show()
+
 LQR()
+
