@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from env import OptimalControlEnv
 from torch import optim
-from torch.utils.tensorboard import SummaryWriter
+import matplotlib.pyplot as plt
 
 
 class Actor(nn.Module):
@@ -47,10 +47,11 @@ def train(
     gamma=0.99,
     num_episodes=500,
     max_episode_steps=300,
-    log_dir="runs/a2c",  # Add this argument for specifying the log directory
-    device="cpu",  # Add this argument to accept the device
+    device="cpu",
 ):
-    writer = SummaryWriter(log_dir)  # Initialize the TensorBoard writer
+    total_rewards = []  # Store total rewards for each episode
+    actor_losses = []  # Store actor losses for each episode
+    critic_losses = []  # Store critic losses for each episode
 
     for episode in range(num_episodes):
         state = env.reset()
@@ -89,13 +90,27 @@ def train(
 
         print(f"Episode {episode + 1}/{num_episodes}: Total reward: {total_reward}")
 
-        # Log metrics to TensorBoard
-        writer.add_scalar("Total reward", total_reward, episode)
-        writer.add_scalar("Actor loss", actor_loss.item(), episode)
-        writer.add_scalar("Critic loss", critic_loss.item(), episode)
+        total_rewards.append(total_reward)
+        actor_losses.append(actor_loss.item())
+        critic_losses.append(critic_loss.item())
 
-    writer.flush()
-    writer.close()  # Close the TensorBoard writer
+    # Plot total rewards
+    plt.figure()
+    plt.plot(total_rewards)
+    plt.xlabel("Episode")
+    plt.ylabel("Total reward")
+    plt.title("Total reward per episode")
+    plt.savefig("results/a2c_total_rewards.png")
+
+    # Plot actor and critic losses
+    plt.figure()
+    plt.plot(actor_losses, label="Actor loss")
+    plt.plot(critic_losses, label="Critic loss")
+    plt.xlabel("Episode")
+    plt.ylabel("Loss")
+    plt.title("Actor and Critic losses")
+    plt.legend()
+    plt.savefig("results/a2c_losses.png")
 
 
 def main(args):
@@ -132,9 +147,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--algorithm", default="a2c", help="The algorithm to use (default: a2c)"
-    )
-    parser.add_argument(
         "--actor_lr",
         type=float,
         default=0.0003,
@@ -164,7 +176,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    if args.algorithm.lower() == "a2c":
-        main(args)
-    else:
-        print(f"Unsupported algorithm '{args.algorithm}'.")
+    main(args)

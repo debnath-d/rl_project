@@ -4,7 +4,7 @@ import numpy as np
 
 
 class OptimalControlEnv(gym.Env):
-    def __init__(self, dt=0.01):
+    def __init__(self, dt=1):
         super(OptimalControlEnv, self).__init__()
 
         # Define the action and state spaces
